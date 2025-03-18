@@ -1,68 +1,80 @@
-let notes = [
-    {
-      id: 1,
-      content: "HTML is easy",
-      important: true
-    },
-    {
-      id: 2,
-      content: "Browser can execute only JavaScript",
-      important: false
-    },
-    {
-      id: 3,
-      content: "GET and POST are the most important methods of HTTP protocol",
-      important: true
-    }
-  ]
+const Note = require('../db')
 
-const getUsers = (request, response) => {
-    return response.status(200).json({
-        message: 'Datos obtenidos con exito',
-        success: true,
-        notes
-    })
+const getNotas = (request, response) => {
+
+    try{
+
+        Note.find({}).then(notes => {
+            return response.status(200).json({
+                message: 'Datos obtenidos con exito',
+                success: true,
+                notes
+            })
+        })
+
+    }catch(err){
+        console.log(err)
+        return response.status(500).json({
+            message: 'Ocurrio un error en el servidor',
+            success: false
+        })
+
+    }
 }
 
-const getUser = (request, response) => {
-    const id = parseInt(request.params.id)
-    const user = notes.find(note => note.id === id)
-    if(user){
-        return response.status(200).json({
-            message: 'Usuario obtenido con exito',
-            success: true,
-            user
-        })
-    }
+const getNota = (request, response) => {
+    const id = request.params.id
 
-    return response.status(404).json({
-        message: 'No existe el usuario en el servidor',
-        success: false
+    Note.findById(id).then(note => {
+        if(note){
+            return response.status(200).json({
+                message: 'Usuario obtenido con exito',
+                success: true,
+                note
+            })
+        }
+
+        return response.status(404).json({
+            message: 'No existe el usuario en el servidor',
+            success: false
+        })
+
+    }).catch(err => {
+        console.error(err)
+        return response.status(400).json({
+            message: 'Formato incorrecto id',
+            success: false
+        })
     })
 }
 
 const deleteUser = (request, response) => {
-    const id = parseInt(request.params.id)
-    const user = notes.find(user => user.id === id)
-    if(user){
-        notes = notes.filter(user => user.id !== id)
-        return response.status(200).json({
-            message: 'Usuario eliminado con exito',
-            success: true
-        })
-    }
+    const id = request.params.id
 
-    return response.status(404).json({
-        message: 'El usuario no se encuentra registrado',
-        success:false
+    Note.findOneAndDelete({_id: id}).then(result => {
+        console.log(result)
+        if(result){
+            return response.status(200).json({
+                message: 'Usuario eliminado con exito',
+                success: true
+            })
+        }
+
+        return response.status(404).json({
+            message:'El usuario no se encuentra registrado',
+            success: false
+        })
+    }).catch(err => {
+        console.log(err)
+        return  response.status(500).json({
+            message: 'Error en el servidor',
+            success:false
+        })
     })
+
 }
 
 const addNota = (request, response) => {
-    const maxId = notes.length > 0 
-        ? Math.max(...notes.map(n => n.id))
-        : 0
-
     const note = request.body
 
     console.log(note)
@@ -73,44 +85,50 @@ const addNota = (request, response) => {
         })
     }
 
-    const nota = {
+    const nota = new Note({
         content: note.content,
-        important: Boolean(note.important) || false,
-        id: maxId + 1
-    }
+        important: Boolean(note.important) || false
+    })
 
-    notes = notes.concat(nota)
-
-    return response.status(200).json({
-        message:"Nota añadida",
-        success: true
+    nota.save().then(result => {
+        return response.status(200).json({
+            message:'Nota añadida',
+            success: true
+        })
+    }).catch(err => {
+        return response.status(500).json({
+            message: 'Error en el servidor'
+        })
     })
 }
 
 const updateNote = (request, response) => {
-    const id = Number(request.params.id)
+    const id = request.params.id
+    const body = request.body
 
-    if(!id){
-        return response.status(404).json({
-            message: 'El usuario no se encuntra registrado',
-            success: false
-        })
+    const newNote = {
+        content: body.content,
+        important: body.important
     }
 
-    const note = notes.find(note => note.id === id)
-    const changeNotes = {...note, important:!note.important}
-    notes = notes.map(nota => nota.id !== id ? nota : changeNotes)
-
-    return response.status(200).json({
-        message: 'El contacto se actualizo correctamente',
-        success:true
+    Note.findByIdAndUpdate({_id: id},newNote, {new: true}).then(result => {
+        return response.status(200).json({
+            message: 'Nota actualizada con exito',
+            success: true
+        })
+    }).catch(err => {
+        console.error(err)
+        return response.status(500).json({
+            message: 'Error en el servidor',
+            success: false
+        })
     })
 
 }
 
 module.exports = {
-    getUsers,
-    getUser,
+    getNotas,
+    getNota,
     deleteUser,
     addNota,
     updateNote
