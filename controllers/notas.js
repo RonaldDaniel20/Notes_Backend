@@ -22,7 +22,7 @@ const getNotas = (request, response) => {
     }
 }
 
-const getNota = (request, response) => {
+const getNota = (request, response, next) => {
     const id = request.params.id
 
     Note.findById(id).then(note => {
@@ -41,14 +41,11 @@ const getNota = (request, response) => {
 
     }).catch(err => {
         console.error(err)
-        return response.status(400).json({
-            message: 'Formato incorrecto id',
-            success: false
-        })
+        next(err)
     })
 }
 
-const deleteUser = (request, response) => {
+const deleteUser = (request, response, next) => {
     const id = request.params.id
 
     Note.findOneAndDelete({_id: id}).then(result => {
@@ -65,25 +62,16 @@ const deleteUser = (request, response) => {
             success: false
         })
     }).catch(err => {
-        console.log(err)
-        return  response.status(500).json({
-            message: 'Error en el servidor',
-            success:false
-        })
+        console.error(err)
+        next(err)
     })
 
 }
 
-const addNota = (request, response) => {
+const addNota = (request, response, next) => {
     const note = request.body
 
     console.log(note)
-    if(!note.content){
-        return response.status(400).json({
-            message: 'Faltan datos obligatorios',
-            success: false
-        })
-    }
 
     const nota = new Note({
         content: note.content,
@@ -96,32 +84,25 @@ const addNota = (request, response) => {
             success: true
         })
     }).catch(err => {
-        return response.status(500).json({
-            message: 'Error en el servidor'
-        })
+        console.error(err)
+        next(err)
     })
 }
 
-const updateNote = (request, response) => {
+const updateNote = (request, response, next) => {
     const id = request.params.id
-    const body = request.body
+    const {content, important} = request.body
 
-    const newNote = {
-        content: body.content,
-        important: body.important
-    }
 
-    Note.findByIdAndUpdate({_id: id},newNote, {new: true}).then(result => {
+    Note.findByIdAndUpdate({_id: id},{content, important}, {new: true, runValidators:true, context:'query'})
+    .then(result => {
         return response.status(200).json({
             message: 'Nota actualizada con exito',
             success: true
         })
     }).catch(err => {
         console.error(err)
-        return response.status(500).json({
-            message: 'Error en el servidor',
-            success: false
-        })
+        next(err)
     })
 
 }
