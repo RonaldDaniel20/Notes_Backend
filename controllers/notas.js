@@ -1,10 +1,11 @@
 const Note = require('../models/notes')
+const User = require('../models/user')
 
 const getNotas = async (request, response) => {
 
     try{
 
-        const notes = await Note.find({})
+        const notes = await Note.find({}).populate('user', {username: 1, name: 1})
         return response.status(200).json({
             message: 'Datos obtenidos con exito',
             success:true,
@@ -75,14 +76,28 @@ const deleteUser = async (request, response, next) => {
 const addNota = async (request, response, next) => {
 
     try{
-        const {content, important} = request.body
+        const {content, important, id} = request.body
+
+        const user = await User.findById({_id: id})
+
+        if(!user){
+            return response.status(400).json({
+                message: 'El usuario no se encuentra registrado',
+                success: false
+            })
+        }
 
         const nota = new Note({
             content: content,
-            important: Boolean(important) || false
+            important: Boolean(important) || false,
+            user: user.id
         })
 
-        await nota.save()
+        const savedNote = await nota.save()
+        user.notes = user.notes.concat(savedNote._id)
+
+        await user.save()
+
         return response.status(200).json({
                 message:'Nota añadida con exito',
                 success: true
