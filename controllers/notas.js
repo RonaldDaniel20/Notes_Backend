@@ -1,5 +1,16 @@
 const Note = require('../models/notes')
 const User = require('../models/user')
+const jwt = require('jsonwebtoken')
+require('dotenv').config()
+
+const getTokenFrom = (request) => {
+    const authorization = request.get('authorization')
+    if(authorization && authorization.startsWith('Bearer ')){
+        return authorization.replace('Bearer ', '')
+    }
+
+    return null
+}
 
 const getNotas = async (request, response) => {
 
@@ -78,7 +89,16 @@ const addNota = async (request, response, next) => {
     try{
         const {content, important, id} = request.body
 
-        const user = await User.findById({_id: id})
+        const decodedToken = jwt.verify(getTokenFrom(request), process.env.SECRET )
+
+        if(!decodedToken.id){
+            return response.status(401).json({
+                message: 'token invalido',
+                success: false
+            })
+        }
+
+        const user = await User.findById({_id: decodedToken.id})
 
         if(!user){
             return response.status(400).json({
